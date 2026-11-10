@@ -7,18 +7,19 @@
 class MassimoAlpha < Formula
   desc "Server for eQ-3 MAX! Cube heating systems: API, web UI, the Cube proxy"
   homepage "https://github.com/metaworx/massimo"
-  url "https://github.com/metaworx/massimo/archive/refs/tags/v0.12.0-alpha.1.tar.gz"
-  sha256 "aa2e111afd811694e2d1dba7cffd0cd016a96ab9d721ee4df74fa2c828d3bfad"
-  version "0.12.0-alpha.1"
+  url "https://github.com/metaworx/massimo/archive/refs/tags/v0.13.0-alpha.2.tar.gz"
+  sha256 "ebc826d3507c0cf7aa3357fb24eef5b368f418c33f4e23f8f99b7a525127f8fa"
+  version "0.13.0-alpha.2"
   license "AGPL-3.0-or-later"
   head "https://github.com/metaworx/massimo.git", branch: "main"
 
   depends_on "go" => :build
 
   def install
-    system "go", "build", *std_go_args(output: bin/"massimo", ldflags: "-s -w -X main.version=v#{version} -X main.channel=alpha"), "./cmd/massimo"
+    system "go", "build", *std_go_args(output: bin/"massimo", ldflags: "-s -w -X main.version=v#{version} -X main.flavour=alpha"), "./cmd/massimo"
     # The marker internal/install.Packaged reads: brew owns this binary, so
-    # massimo update and the web UI leave the install to it.
+    # massimo update leaves the install to it, and the web UI's Update
+    # runs brew upgrade.
     (share/"massimo").mkpath
     (share/"massimo"/"packaged").write "brew\nbrew upgrade massimo-alpha\nbrew uninstall massimo-alpha\n"
     template = (buildpath/"packaging/env.template").read
@@ -50,16 +51,23 @@ class MassimoAlpha < Formula
 
   def caveats
     <<~EOS
-      Put the Cubes' addresses and MASSIMO_API_TOKEN into
-        #{etc}/massimo/env
-      (README.md, "Cube variables"), then run massimo serve as yourself while
-      you are logged in with
+      Nothing needs to go into #{etc}/massimo/env for a start. Run
+      massimo serve as yourself while you are logged in with
         brew services start massimo-alpha
       or as a daemon at boot with
         sudo brew services start massimo-alpha
-      The web UI is then at http://localhost:8099/. Updates come through
-      brew upgrade; massimo update leaves them to it. Do not mix this with
-      massimo install, which sets up a Mac without Homebrew.
+      The web UI is then at http://localhost:8099/. Until it has an owner,
+      every device on the local network may use it: create the owner there
+      at once, or before the start with
+        massimo -data #{var}/massimo user add <name> -role owner
+      The Cubes are added in the web UI too, under System settings, Cubes;
+      the settings file takes the rest (README.md, "Cube variables").
+      Updates come through the web UI's Update, which runs brew upgrade and
+      brew services restart for you under brew services as yourself, or by
+      hand: brew upgrade massimo-alpha does not restart a running service, brew
+      services restart massimo-alpha does. massimo update leaves them to brew. Do
+      not mix this with massimo install, which sets up a Mac without
+      Homebrew.
     EOS
   end
 
