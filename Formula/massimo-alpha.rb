@@ -1,15 +1,16 @@
 # The Homebrew formula of Massimo for the update channel alpha, rendered
 # from packaging/homebrew/massimo.rb.in by packaging/homebrew/render.sh at
-# each release and pushed to the tap metaworx/homebrew-massimo
-# (packaging/README.md, "Homebrew"). Built from source on the Mac, so
+# each release and pushed to the tap metaworx/homebrew-massimo, or for the
+# rolling channels devel and nightly at each of their builds to
+# metaworx/homebrew-massimo-rolling (packaging/README.md, "Homebrew"). Built from source on the Mac, so
 # nothing needs notarization and nothing is quarantined; brew then owns
 # the binary, which the marker under share/massimo tells massimo.
 class MassimoAlpha < Formula
   desc "Server for eQ-3 MAX! Cube heating systems: API, web UI, the Cube proxy"
   homepage "https://github.com/metaworx/massimo"
-  url "https://github.com/metaworx/massimo/archive/refs/tags/v0.14.0-alpha.1.tar.gz"
-  sha256 "39ca1e6c6933845fb2e971b357ab8e48ec1a335f9c4a1be38ba9a1677c46a4f4"
-  version "0.14.0-alpha.1"
+  url "https://github.com/metaworx/massimo/archive/refs/tags/v0.15.0-alpha.1.tar.gz"
+  sha256 "ed4fea36e2a461a1c9c9562a84dab14b4daec8d5ce6da989edc05329a8c03d69"
+  version "0.15.0-alpha.1"
   license "AGPL-3.0-or-later"
   head "https://github.com/metaworx/massimo.git", branch: "main"
 
@@ -24,7 +25,7 @@ class MassimoAlpha < Formula
     (share/"massimo"/"packaged").write "brew\nbrew upgrade massimo-alpha\nbrew uninstall massimo-alpha\n"
     template = (buildpath/"packaging/env.template").read
     template = template.sub("MASSIMO_LOG=/var/log/massimo/serve.log",
-                            "# The log is #{var}/log/massimo.log, written by brew services; no MASSIMO_LOG here.")
+                            "# The log is #{var}/log/massimo/serve.log: the service passes -log; no MASSIMO_LOG here.")
     (share/"massimo"/"env.template").write template
   end
 
@@ -34,7 +35,7 @@ class MassimoAlpha < Formula
   post_install_steps do
     mkdir_p "massimo", base: :etc
     mkdir_p "massimo", base: :var
-    mkdir_p "log", base: :var
+    mkdir_p "log/massimo", base: :var
     unless_path_exists "massimo/env", base: :etc do
       copy "share/massimo/env.template", "massimo/env", source_base: :prefix, target_base: :etc
       set_permissions "massimo/env", "0600", base: :etc
@@ -42,7 +43,10 @@ class MassimoAlpha < Formula
   end
 
   service do
-    run [opt_bin/"massimo", "-env", etc/"massimo/env", "-data", var/"massimo", "serve", "-listen", ":8099"]
+    # serve writes and rotates its log itself, as on every platform;
+    # brew's file takes what it prints before the log, and a panic.
+    run [opt_bin/"massimo", "-env", etc/"massimo/env", "-data", var/"massimo", "serve", "-listen", ":8099",
+         "-log", var/"log/massimo/serve.log", "-log-process-format", "none"]
     keep_alive true
     working_dir var/"massimo"
     log_path var/"log/massimo.log"
